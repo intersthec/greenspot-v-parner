@@ -10,11 +10,11 @@
   <meta name="viewport" content="viewport-fit=cover,width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no"/>
   <meta name="format-detection" content="telephone=no"/>
   <meta name="msapplication-tap-highlight" content="no"/>
-  <link rel="shortcut icon" type="image/png" href="https://img5.pic.in.th/file/secure-sv1/greenspot-company-logo182b55ccc807b6f1.png"/>
+  <link rel="shortcut icon" type="image/png" href="https://img2.pic.in.th/pic/greenspot-company-logo39db3abc0b70a4a2.png"/>
   <meta property="og:url" content="/"/>
   <meta property="og:title" content="ระบบบันทึกข้อมูลร้านค้าแต่ละสาขา"/>
   <meta property="og:description" content="ระบบบันทึกข้อมูลร้านค้าแต่ละสาขา"/>
-  <meta property="og:image" content="https://img5.pic.in.th/file/secure-sv1/greenspot-company-logo182b55ccc807b6f1.png"/>
+  <meta property="og:image" content="https://img2.pic.in.th/pic/greenspot-company-logo39db3abc0b70a4a2.png"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="ระบบบันทึกข้อมูลร้านค้าแต่ละสาขา"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
@@ -95,10 +95,12 @@
         <label for="storeType" class="block text-sm font-medium text-gray-700">ประเภทร้านค้า:</label>
         <select id="storeType" name="storeType" class="input-field mt-1" required>
           <option value="">เลือกประเภทร้านค้า</option>
-          <option value="Diamond">Diamond</option>
-          <option value="Goal">Goal</option>
-          <option value="Silver">Silver</option>
-          <option value="bronze">bronze</option>
+          <option value="ร้านอาหาร">ร้านอาหาร</option>
+          <option value="ร้านค้าปลีก">ร้านค้าปลีก</option>
+          <option value="ร้านสะดวกซื้อ">ร้านสะดวกซื้อ</option>
+          <option value="ร้านเครื่องดื่ม">ร้านเครื่องดื่ม</option>
+          <option value="ร้านบริการ">ร้านบริการ</option>
+          <option value="ร้านขายของชำ">ร้านขายของชำ</option>
           <option value="อื่นๆ">อื่นๆ</option>
         </select>
       </div>
@@ -133,17 +135,31 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
+    // ใส่ LIFF ID จริงของคุณที่นี่
+    const LIFF_ID = '2008350853-8ZGqr1LK';
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwv9zkH2J_-plawJm4x7RuctipEzchddbRhUZhzyuj6IvqsPlipfmg8km6ZmSvRRag7/exec';
     let userProfile;
 
     async function initializeLiff() {
-      await liff.init({ liffId: '2008350853-8ZGqr1LK' });
-      if (liff.isLoggedIn()) {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        
         userProfile = await liff.getProfile();
         const userId = userProfile.userId;
         await populateUserInfo(userId);
-      } else {
-        liff.login();
+      } catch (error) {
+        console.error('LIFF initialization failed:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: 'ไม่สามารถเริ่มต้นระบบได้ กรุณาลองใหม่อีกครั้ง',
+          confirmButtonColor: '#0000ff'
+        });
       }
     }
 
@@ -152,7 +168,7 @@
 
       const loadingDialog = showLoading('กำลังดึงข้อมูล...');
       try {
-        const response = await fetch(`${SCRIPT_URL}?userId=${userId}`);
+        const response = await fetch(`${SCRIPT_URL}?action=getUserData&userId=${userId}`);
         if (!response.ok) throw new Error(`การเชื่อมต่อล้มเหลว: ${response.status}`);
 
         const data = await response.json();
@@ -185,17 +201,28 @@
           method: 'POST',
           body: formData
         });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
+        console.log('Response result:', result);
 
-        if (result.status === 'error') throw new Error(result.message);
+        if (result.status === 'error') {
+          throw new Error(result.message);
+        }
 
+        // แสดง SweetAlert เมื่อบันทึกสำเร็จ
         await Swal.fire({
           icon: 'success',
           title: 'บันทึกสำเร็จ',
-          html: `ข้อมูลร้านค้าถูกบันทึกเรียบร้อยแล้ว<br><strong>จำนวนร้านค้าที่บันทึก: ${result.totalStores} ร้าน</strong>`,
-          confirmButtonColor: '#0000ff'
+          html: `ข้อมูลร้านค้าถูกบันทึกเรียบร้อยแล้ว<br><strong>จำนวนร้านค้าที่บันทึก: ${result.totalStores || 1} ร้าน</strong>`,
+          confirmButtonColor: '#0000ff',
+          confirmButtonText: 'ตกลง'
         });
 
+        // สร้างและส่ง Flex Message
         const flexMessage = {
           type: 'flex',
           altText: 'บันทึกข้อมูลร้านค้าสำเร็จ',
@@ -375,7 +402,7 @@
                   action: {
                     type: 'uri',
                     label: 'บันทึกร้านค้าเพิ่ม',
-                    uri: 'line://app/2008350853-8ZGqr1LK?linkurl=https://intersthec.github.io/greenspot-v-parner/recordofgooddeeds.html'
+                    uri: liff.permanentLink.createUrl()
                   }
                 }
               ],
@@ -384,14 +411,26 @@
           }
         };
 
-        await liff.sendMessages([flexMessage]);
-        liff.closeWindow();
+        // ส่ง Flex Message
+        if (liff.isInClient()) {
+          await liff.sendMessages([flexMessage]);
+        }
+
+        // ปิดหน้าต่าง LIFF หลังจากบันทึกสำเร็จ
+        setTimeout(() => {
+          if (liff.isInClient()) {
+            liff.closeWindow();
+          }
+        }, 1500);
+
       } catch (error) {
-        Swal.fire({
+        console.error('Error saving store data:', error);
+        await Swal.fire({
           icon: 'error',
           title: 'เกิดข้อผิดพลาด',
-          text: error.message,
-          confirmButtonColor: '#0000ff'
+          text: error.message || 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+          confirmButtonColor: '#0000ff',
+          confirmButtonText: 'ตกลง'
         });
       } finally {
         loadingDialog.close();
@@ -401,18 +440,18 @@
     });
 
     function showLoading(message) {
-      Swal.fire({
+      return Swal.fire({
         title: message,
         allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
+        showConfirmButton: false,
+        willOpen: () => {
+          Swal.showLoading();
+        }
       });
-      return { close: () => Swal.close() };
     }
 
-    window.onload = initializeLiff;
+    // เริ่มต้น LIFF เมื่อโหลดหน้าเว็บ
+    window.addEventListener('load', initializeLiff);
   </script>
 </body>
 </html>
-
-
-
